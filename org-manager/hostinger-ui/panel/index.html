@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Company Structure</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <style>
+      body { overflow: auto; }
+      .boot {
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .boot-card {
+        max-width: 400px;
+        width: 100%;
+        padding: 32px 28px;
+        text-align: center;
+      }
+      .boot-card .mark {
+        width: 48px;
+        height: 48px;
+        border-radius: 15px;
+        margin: 0 auto 18px;
+        background: linear-gradient(145deg, #ffe19a, #d9a52f);
+        color: #2a1d05;
+        font-weight: 700;
+        font-size: 14px;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 8px 22px rgba(217, 165, 47, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+      .boot-card h2 {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .boot-card p { margin-top: 8px; color: var(--tx2); font-size: 13.5px; }
+    </style>
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
+    <!--
+      Placement handler for the Bitrix24 left-menu item "Company Structure".
+
+      Bitrix opens this page inside an iframe with an HTTP POST, which nginx turns
+      back into this static file (error_page 405 =200 $uri). The page reads the
+      portal auth payload with the BX24 SDK, hands it to the console backend for
+      verification, and moves on to the console once a session cookie exists.
+    -->
+    <main class="boot">
+      <section class="boot-card glass">
+        <div class="mark" aria-hidden="true">A7</div>
+        <h2 id="title"><span class="spinner"></span>Signing in</h2>
+        <p id="detail">Checking your Bitrix24 administrator rights.</p>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var CONSOLE_URL = "/org";
+        var title = document.getElementById("title");
+        var detail = document.getElementById("detail");
+
+        function say(text, note) { title.textContent = text; detail.textContent = note || ""; }
+        function refused(note) { say("Admins only", note || "This console is limited to Bitrix administrators."); }
+        function go() { window.location.replace(CONSOLE_URL); }
+
+        function haveSession() {
+          return fetch("/api/auth/me", { credentials: "same-origin" })
+            .then(function (r) { return r.ok; })
+            .catch(function () { return false; });
+        }
+
+        function loadBX24() {
+          return new Promise(function (resolve, reject) {
+            if (window.BX24) { resolve(window.BX24); return; }
+            var s = document.createElement("script");
+            s.src = "//api.bitrix24.com/api/v1/";
+            s.onload = function () { window.BX24 ? resolve(window.BX24) : reject(new Error("sdk")); };
+            s.onerror = function () { reject(new Error("sdk")); };
+            document.head.appendChild(s);
+          });
+        }
+
+        function signIn(auth) {
+          return fetch("/api/auth/bitrix", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ AUTH_ID: auth.access_token || auth.AUTH_ID, DOMAIN: auth.domain || auth.DOMAIN })
+          });
+        }
+
+        haveSession().then(function (ok) {
+          if (ok) { go(); return; }
+          loadBX24().then(function (BX24) {
+            BX24.init(function () {
+              var auth = BX24.getAuth();
+              if (!auth) { refused("The portal did not provide an authorisation token."); return; }
+              signIn(auth).then(function (r) {
+                if (r.ok) { go(); return; }
+                if (r.status === 403) { refused(); return; }
+                refused("Sign-in failed. Reload the page to try again.");
+              }).catch(function () { refused("Sign-in failed. Reload the page to try again."); });
+            });
+          }).catch(function () { refused("Open this page from the Bitrix24 menu, not directly."); });
+        });
+      })();
+    </script>
+  </body>
+</html>

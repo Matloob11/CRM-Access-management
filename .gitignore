@@ -1,0 +1,47 @@
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*_codex
+secrets/
+**/secrets/
+*.secret
+
+# Phone-mask live password file (commit the example only)
+phone-mask/a7_tl_phone_mask.config.local.php
+
+# Spreadsheets and local dumps
+*.xlsx
+*.xls
+*.csv
+
+# Editor / agent / browser junk
+.claude/
+.playwright-mcp/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Temp ops files (may contain IPs or tokens)
+**/_tmp*
+**/*.bak
+**/*.bak.*
+
+# Python / Node
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+**/node_modules/
+
+# Logs and caches
+*.log
+.cache/

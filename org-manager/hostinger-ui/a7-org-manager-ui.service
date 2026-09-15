@@ -1,0 +1,24 @@
+[Unit]
+Description=A7 Org & Security console UI (Hostinger BFF, Bitrix left-menu iframe)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/a7-org-manager
+Environment=A7_OPS_AWS_BASE=https://crm.a7grouprealestatedxb.com/a7-org
+Environment=A7_OPS_HMAC_SECRET_FILE=/opt/a7-org-manager/secrets/hmac.secret
+Environment=A7_OPS_SESSION_SECRET_FILE=/opt/a7-org-manager/secrets/session.secret
+Environment=A7_OPS_PORTAL_DOMAIN=crm.a7grouprealestatedxb.com
+Environment=A7_OPS_FRAME_ANCESTORS=https://crm.a7grouprealestatedxb.com
+Environment=A7_OPS_HTTP_TIMEOUT=120
+Environment=A7_OPS_LOCAL_FAKE_ADMIN=0
+Environment=A7_OPS_USE_MOCK_AWS=0
+ExecStart=/opt/a7-org-manager/venv/bin/uvicorn orgapp.app:app --host 127.0.0.1 --port 8790
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

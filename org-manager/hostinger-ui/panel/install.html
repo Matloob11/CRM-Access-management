@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Install Company Structure</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <style>
+      .boot { display: flex; min-height: 60vh; align-items: center; justify-content: center; }
+      .boot .card { max-width: 560px; width: 100%; }
+      .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid #dfe4ea; }
+      .row:last-child { border-bottom: 0; }
+      .row .what { color: #5d6b7a; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Install handler for the Bitrix24 local application. Binds one left-menu item
+      that opens this console. Re-running repairs the binding: an older handler URL
+      is unbound before the new one is added, so moving where the console is served
+      never leaves a dead menu item behind.
+    -->
+    <main class="boot">
+      <section class="card">
+        <h2 id="title">Registering the app…</h2>
+        <p id="subtitle" class="note">Binding the left-menu placement.</p>
+        <div id="rows"></div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var HANDLER = new URL(".", window.location.href).href;
+        var PLACEMENT = "LEFT_MENU";
+        var TITLE = "Company Structure";
+
+        var els = {
+          title: document.getElementById("title"),
+          subtitle: document.getElementById("subtitle"),
+          rows: document.getElementById("rows")
+        };
+
+        function line(label, what) {
+          var row = document.createElement("div");
+          row.className = "row";
+          var left = document.createElement("div"); left.textContent = label;
+          var right = document.createElement("div"); right.className = "what"; right.textContent = what;
+          row.appendChild(left); row.appendChild(right); els.rows.appendChild(row);
+          return right;
+        }
+
+        function loadBX24() {
+          return new Promise(function (resolve, reject) {
+            if (window.BX24) { resolve(window.BX24); return; }
+            var s = document.createElement("script");
+            s.src = "//api.bitrix24.com/api/v1/";
+            s.onload = function () { window.BX24 ? resolve(window.BX24) : reject(new Error("sdk")); };
+            s.onerror = function () { reject(new Error("sdk")); };
+            document.head.appendChild(s);
+          });
+        }
+
+        function call(BX24, method, params) {
+          return new Promise(function (resolve, reject) {
+            BX24.callMethod(method, params || {}, function (result) {
+              if (result.error()) { reject(new Error(result.error_description() || result.error())); }
+              else { resolve(result.data()); }
+            });
+          });
+        }
+
+        loadBX24().then(function (BX24) {
+          BX24.init(function () {
+            var status = line("Left menu item “" + TITLE + "”", "checking…");
+            call(BX24, "placement.get").then(function (bound) {
+              var mine = (bound || []).filter(function (r) { return r.placement === PLACEMENT; });
+              var already = mine.some(function (r) { return r.handler === HANDLER; });
+              var stale = mine.filter(function (r) { return r.handler !== HANDLER; });
+              if (already) { status.textContent = "already bound"; return null; }
+              var unbinds = stale.map(function (r) {
+                return call(BX24, "placement.unbind", { PLACEMENT: PLACEMENT, HANDLER: r.handler });
+              });
+              return Promise.all(unbinds).then(function () {
+                return call(BX24, "placement.bind", { PLACEMENT: PLACEMENT, HANDLER: HANDLER, TITLE: TITLE });
+              }).then(function () { status.textContent = "bound"; });
+            }).then(function () {
+              els.title.textContent = "Company Structure is installed";
+              els.subtitle.textContent = "The item appears in the portal's main menu for administrators.";
+              if (BX24.installFinish) { BX24.installFinish(); }
+            }).catch(function (e) {
+              els.title.textContent = "Installation failed";
+              els.subtitle.textContent = String(e.message || e);
+              status.textContent = "not bound";
+            });
+          });
+        }).catch(function () {
+          els.title.textContent = "Open this page from Bitrix24";
+          els.subtitle.textContent = "The install handler only runs inside the portal.";
+        });
+      })();
+    </script>
+  </body>
+</html>
